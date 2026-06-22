@@ -30,7 +30,7 @@ import java.util.concurrent.Executors;
  */
 public class HttpFileServer {
 
-    private static final String STORAGE_DIR = "fichiers/transfers";
+    private static final String STORAGE_DIR = "fichiers" + File.separator + "transfers";
     private static final int BUFFER_SIZE = 8192;
 
     private final int httpPort;
@@ -219,6 +219,11 @@ public class HttpFileServer {
     // ============================================================
 
     private void traiterUpload(Map<String, String> headers, byte[] body, OutputStream out) throws IOException {
+        if (body == null || body.length == 0) {
+            envoyerReponse(out, 400, "Bad Request", "Corps de requête vide");
+            return;
+        }
+
         String contentType = headers.get("content-type");
         if (contentType == null || !contentType.startsWith("multipart/form-data")) {
             envoyerReponse(out, 400, "Bad Request", "Content-Type doit être multipart/form-data");
@@ -327,7 +332,7 @@ public class HttpFileServer {
         log("INFO", "Fichier reçu: " + filename + " (" + size + " octets)");
 
         // Répondre avec le chemin relatif
-        String responsePath = "fichiers/transfers/" + filename;
+        String responsePath = STORAGE_DIR + File.separator + filename;
         envoyerReponse(out, 200, "OK", responsePath, "text/plain");
     }
 

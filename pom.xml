@@ -6,7 +6,7 @@
 
     <groupId>macy</groupId>
     <artifactId>connecteurserveur</artifactId>
-    <version>17.4</version>
+    <version>17.4-SNAPSHOT</version>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
