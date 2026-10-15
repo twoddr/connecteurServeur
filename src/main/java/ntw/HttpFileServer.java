@@ -1,6 +1,10 @@
 package ntw;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URLDecoder;
@@ -30,7 +34,7 @@ import java.util.concurrent.Executors;
  */
 public class HttpFileServer {
 
-    private static final String STORAGE_DIR = "fichiers" + File.separator + "transfers";
+    private static final String STORAGE_DIR = "fichiers/transfers";
     private static final int BUFFER_SIZE = 8192;
 
     private final int httpPort;
@@ -332,7 +336,7 @@ public class HttpFileServer {
         log("INFO", "Fichier reçu: " + filename + " (" + size + " octets)");
 
         // Répondre avec le chemin relatif
-        String responsePath = STORAGE_DIR + File.separator + filename;
+        String responsePath = STORAGE_DIR + "/" + filename;
         envoyerReponse(out, 200, "OK", responsePath, "text/plain");
     }
 
@@ -362,14 +366,20 @@ public class HttpFileServer {
         return (pos < data.length) ? pos : -1;
     }
 
-    // ============================================================
-    // DOWNLOAD
-    // ============================================================
-
     private void traiterDownload(String filename, OutputStream out) throws IOException {
-        String safeName = sanitizeFilename(filename);
+        // Le filename reçu peut être un chemin complet retourné par l'upload
+        // (ex: "fichiers/transfers/monfichier.png") ou juste un nom de fichier.
+        // Si c'est un chemin complet, on l'utilise directement ; sinon on le préfixe.
+        // Normaliser les backslashes (Windows) en forward slashes
+        if (filename != null)
+            filename = filename.replace("\\", "/");
+        String safeName = filename != null ? filename.replace("..", "_") : "file.bin";
 
-        Path filePath = Paths.get(STORAGE_DIR, safeName);
+        Path filePath = Paths.get(safeName);
+        // Si le chemin n'est pas absolu et ne commence pas par STORAGE_DIR, préfixer
+        if (!filePath.isAbsolute() && !safeName.startsWith(STORAGE_DIR)) {
+            filePath = Paths.get(STORAGE_DIR, safeName);
+        }
         if (!Files.exists(filePath) || Files.isDirectory(filePath)) {
             envoyerReponse(out, 404, "Not Found", "Fichier introuvable: " + safeName);
             return;
@@ -399,8 +409,11 @@ public class HttpFileServer {
     // ============================================================
 
     private void traiterDelete(String filename, OutputStream out) throws IOException {
-        String safeName = sanitizeFilename(filename);
-        Path filePath = Paths.get(STORAGE_DIR, safeName);
+        String safeName = filename != null ? filename.replace("..", "_") : "file.bin";
+        Path filePath = Paths.get(safeName);
+        if (!filePath.isAbsolute() && !safeName.startsWith(STORAGE_DIR)) {
+            filePath = Paths.get(STORAGE_DIR, safeName);
+        }
 
         if (!Files.exists(filePath)) {
             envoyerReponse(out, 404, "Not Found", "Fichier introuvable: " + safeName);
